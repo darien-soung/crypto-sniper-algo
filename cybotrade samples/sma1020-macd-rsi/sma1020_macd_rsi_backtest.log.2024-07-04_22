@@ -1,0 +1,5 @@
+INFO cybotrade.runtime 2024-07-04 22:47:02,115 runtime.rs:397 Connecting to runtime with mode Backtest...
+INFO cybotrade.runtime 2024-07-04 22:47:02,129 runtime.rs:500 Spawned an async task for handling strategy requests
+INFO cybotrade.runtime 2024-07-04 22:47:02,132 runtime.rs:1205 Fetching data count set of data.
+INFO cybotrade.runtime 2024-07-04 22:47:02,355 runtime.rs:1271 [Runtime] Retrieved requested data count.
+INFO cybotrade.runtime 2024-07-04 22:47:02,355 runtime.rs:1278 Retrieving Candle data for playback
