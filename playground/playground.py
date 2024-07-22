@@ -19,4 +19,4 @@ ema_values = [80000, 67867, 67875, 67917, 68050]
 print(all(ema_values[0] >= ema for ema in ema_values))
 
 
-
+## Test commit on darien's branch
