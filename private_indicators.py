@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from typing import List, Union
 import tools
+from datetime import datetime, time
 
 
 def crossover(series1: Union[List[float], np.ndarray], series2: Union[List[float], float, int, np.ndarray]) -> int:
@@ -127,19 +128,43 @@ def is_price_within(price_a, price_b, percentage=0.5):
     return difference <= threshold
 
 
-def session_volume_profile(data):
+def session_volume_profile(date, highs, lows, volumes, lookback):
+    """
+    SVP indicator
+    :param data: must be OHLCV data with Open Time as index e.g. Hourly chart, lookback = 24. Data must start with 00:00 OR else it returns error
+    :param lookback: based on how many candles form a day relative to the timeframe
+    :return:
+    """
     svp = SessionVolumeProfile()
-    highs = data['High'].values
-    lows = data['Low'].values
-    volumes = data['Volume'].values
 
-    return svp.calculate(highs, lows, volumes)
+    first_datetime = date[0]
+    if first_datetime.time() == time(0, 0) and len(highs) == len(lows) == len(volumes):
+
+        vah_list = np.full(len(highs), np.nan)
+        poc_list = np.full(len(highs), np.nan)
+        val_list = np.full(len(highs), np.nan)
+
+        for i in range(0, len(highs), lookback):
+            day_highs = highs[i: i + lookback].tolist()
+            day_lows = lows[i: i + lookback].tolist()
+            day_volumes = volumes[i: i + lookback].tolist()
+
+            vah, poc, val = svp.calculate(day_highs, day_lows, day_volumes, lookback, date[i])
+
+            vah_list[i:i+lookback] = vah
+            poc_list[i:i+lookback] = poc
+            val_list[i:i + lookback] = val
+
+        return [vah_list, poc_list, val_list]
+
+    else:
+        raise Exception("Data frame time doesn't start at time 00:00 or length of highs lows and volumes are different")
 
 
 ### Indicator Classes go here ###
 
 class SessionVolumeProfile:
-    def __init__(self, number_of_rows=24, value_area_coverage=70, track_developing_va=False):
+    def __init__(self, number_of_rows=24, value_area_coverage=80, track_developing_va=False):
         self.number_of_rows = number_of_rows
         self.value_area_coverage = value_area_coverage / 100
         self.track_developing_va = track_developing_va
@@ -154,30 +179,37 @@ class SessionVolumeProfile:
         price_portion = 0
 
         if candle_high > row_high and candle_low < row_low:
+            # The candle engulfed the row, so take the entire row range's portion of volume out of the candle
             price_portion = row_range
         elif candle_high <= row_high and candle_low >= row_low:
+            # The top of the candle is in-or-equal the row, the bottom of the candle is also in-or-equal the row
             price_portion = candle_range
-        elif candle_high > row_high and candle_low >= row_low:
+        elif candle_high > row_high and candle_low >= row_low and candle_low < row_high:
+            # The top of the candle is above the row, and the bottom is in-or-equal the row
             price_portion = row_high - candle_low
-        elif candle_high <= row_high and candle_low < row_low:
+        elif candle_high <= row_high and candle_low < row_low and candle_high > row_low:
+            # The top of the candle is in-or-equal the row, the bottom of the candle is below the row
             price_portion = candle_high - row_low
         else:
+            # The candle didn't intersect with the row at all
             price_portion = 0
 
+            # return the portion of volume from the candle relative to the amount of price intersecting the row
         return (price_portion * candle_volume) / candle_range
 
-    def calculate(self, highs, lows, volumes):
+    def calculate(self, highs, lows, volumes, number_of_rows, date):
         """
         This method performs the main calculation of the volume profile by iterating through each candle and each row,
         calculating the volume for each row, and then determining the Point of Control (POC), Value Area High (VAH),
         and Value Area Low (VAL).
         """
+        self.number_of_rows = number_of_rows
         day_high = np.max(highs)
-        day_low = np.min(lows)
+        day_low = float(np.min(lows))
         step = (day_high - day_low) / self.number_of_rows
 
         volume_rows = np.zeros(self.number_of_rows)
-        price_level_rows = np.linspace(day_low, day_high, self.number_of_rows)
+        price_level_rows = np.linspace(day_low, day_high, self.number_of_rows, endpoint=False)
 
         for i in range(len(highs)):
             for j in range(self.number_of_rows):

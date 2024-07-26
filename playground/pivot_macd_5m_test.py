@@ -92,7 +92,7 @@ class PivotMacdStrategy(Strategy):
 
 
 try:
-    df = tools.extract_candles_csv('BTC_2020-2024_5m.csv', datetime(2023, 6, 22), datetime(2024, 6, 28))
+    df = tools.extract_candles_csv('BTC_2020-2024_5m.csv', datetime(2023, 1, 22), datetime(2024, 6, 28))
     print(df)
     # df.to_csv('test.csv')
     # Adjusting factors to the trade (because backtesting.py doesn't accept fractional shares)

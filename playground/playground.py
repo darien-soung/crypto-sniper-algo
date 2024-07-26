@@ -1,22 +1,25 @@
 import tools
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 import statsmodels.tsa.stattools as ts
 import os
-from private_indicators import is_price_away, is_price_within
+import pandas as pd
+from private_indicators import is_price_away, is_price_within, session_volume_profile, SessionVolumeProfile
+import numpy as np
 
-# df = tools.extract_candles_binance(datetime(2020, 1, 22), datetime(2024, 6, 24), "1d", 'BTCUSDT')
-# tools.df_to_csv(df, "BTC_2020-2024_1d.csv")
+df = tools.extract_candles_binance(datetime(2024, 7, 1), datetime(2024, 7, 24), "1h", 'BTCUSDT')
+tools.df_to_csv(df, "BTC_2024_1h.csv")
+print(df)
+
+extracted_df = tools.extract_candles_csv(r'BTC_2024_1h.csv', datetime(2024, 7, 1), datetime(2024, 7, 24))
+print(extracted_df)
+
+tools.check_dataset_interval(timedelta(hours=1), 'BTC_2024_1h.csv')
+
+# df = tools.extract_candles_csv(r'BTC_2020-2024_1h.csv', datetime(2020, 1, 23), datetime(2020, 1, 25))
 # print(df)
-#
-# extracted_df = tools.extract_candles_csv(r'BTC_2020-2024_1d.csv', datetime(2020, 1, 22), datetime(2024, 6, 24))
-# print(extracted_df)
-#
-# tools.check_dataset_interval(timedelta(days=1), 'BTC_2020-2024_1d.csv')\
-
-
-close = 67900
-ema_values = [80000, 67867, 67875, 67917, 68050]
-print(all(ema_values[0] >= ema for ema in ema_values))
-
-
-## Test commit on darien's branch
+# vah, poc, val = session_volume_profile(data=df, lookback=24)
+# df["VAH"] = vah
+# df["POC"] = poc
+# df["VAL"] = val
+# print("With the SVP indicators now")
+# print(df.to_string())
