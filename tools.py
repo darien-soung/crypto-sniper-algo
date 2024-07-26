@@ -102,7 +102,7 @@ def extract_candles_csv(csv_filename, start_time: datetime, end_time: datetime) 
     :return: pandas Dataframe
     """
 
-    folder_path = r"C:\Users\User\PycharmProjects\Cybotrade\trade_data"
+    folder_path = r"C:\Users\User\PycharmProjects\crypto-sniper-algo\trade_data"
     try:
         df = pd.read_csv(os.path.join(folder_path, csv_filename))
         print(f"Successfully imported csv data from {str(start_time)} to {str(end_time)}")
@@ -118,7 +118,7 @@ def extract_candles_csv(csv_filename, start_time: datetime, end_time: datetime) 
 
 
 def df_to_csv(df, file_name):
-    folder_path = r"C:\Users\User\PycharmProjects\Cybotrade\trade_data"
+    folder_path = r"C:\Users\User\PycharmProjects\crypto-sniper-algo\trade_data"
     df.to_csv(os.path.join(folder_path, file_name))
 
 def check_dataset_interval(interval: timedelta, csv_filename): # Checks if the dataset has evenly paced intervals
