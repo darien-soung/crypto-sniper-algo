@@ -98,10 +98,11 @@ def pivot_low(low, period=5):
     :return: A Series with pivot low points (value of low at pivot low, NaN otherwise)
     """
     pivot_lows = np.full_like(low, np.nan)
-
-    for i in range(period, len(low) - period):
-        if low[i] == min(low[i - period:i + period + 1]):
-            pivot_lows[i] = low[i]
+    pivot_backcandles_index = 1 + (period * 2)
+    for i in range(pivot_backcandles_index, len(low)):
+        middle_index = i-period+1
+        if low[middle_index] == min(low[i - pivot_backcandles_index:i]): # checks if the middle index is a pivot low/high
+            pivot_lows[middle_index] = low[middle_index]
 
     return pivot_lows
 
@@ -127,6 +128,62 @@ def is_price_within(price_a, price_b, percentage=0.5):
     # Check if the difference is within the threshold
     return difference <= threshold
 
+
+def calculate_realized_volatility(high, low, close, rolling_window):
+    returns = np.full_like(close, np.nan)
+
+    # Calculate logarithmic returns
+    returns = np.log(close[1:] / close[:-1])
+    realized_vol_squared = np.full_like(close, np.nan)
+
+    for i in range(rolling_window - 1, len(returns)):
+        window_returns = returns[i - rolling_window + 1:i + 1]
+        realized_vol_squared[i] = np.sum(window_returns ** 2)
+
+    return realized_vol_squared
+
+
+def calculate_bollinger_volatility(upper_band, lower_band, window, sma):
+    # Convert inputs to pandas Series if they are not already
+    upper_band = pd.Series(upper_band)
+    lower_band = pd.Series(lower_band)
+    sma = pd.Series(sma)
+
+    # Calculate Bollinger Band width
+    width = upper_band - lower_band
+
+    # Normalize the Bollinger Band width to measure relative volatility
+    normalized_width = width / sma
+
+    # Initialize lists to store thresholds and volatility levels
+    low_volatility_thresholds = []
+    high_volatility_thresholds = []
+    volatility_level = []
+
+    # Loop through each value to ensure thresholds are in ascending order
+    for i in range(len(normalized_width)):
+        current_data = normalized_width[:i + 1]  # Use data up to the current point
+
+        low_volatility_threshold = current_data.quantile(0.15)
+        high_volatility_threshold = current_data.quantile(0.85)
+
+        # Ensure thresholds are ordered
+        if i > 0:
+            low_volatility_threshold = max(low_volatility_threshold, low_volatility_thresholds[-1])
+            high_volatility_threshold = max(high_volatility_threshold, high_volatility_thresholds[-1])
+
+        low_volatility_thresholds.append(low_volatility_threshold)
+        high_volatility_thresholds.append(high_volatility_threshold)
+
+        # Categorize the current normalized width
+        if normalized_width[i] < low_volatility_threshold:
+            volatility_level.append(0)  # Low volatility
+        elif normalized_width[i] > high_volatility_threshold:
+            volatility_level.append(2)  # High volatility
+        else:
+            volatility_level.append(1)  # Medium volatility
+
+    return np.array(volatility_level)
 
 def session_volume_profile(date, highs, lows, volumes, lookback):
     """

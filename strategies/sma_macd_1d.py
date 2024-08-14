@@ -55,7 +55,7 @@ class SmaMacdCross(Strategy):
 
 
 try:
-    df = tools.extract_candles_binance(datetime(2023, 6, 22), datetime(2024, 6, 24), "1h", 'BTCUSDT')
+    df = tools.extract_candles_csv('BTC_2020-2024_1h.csv', datetime(2023, 6, 1), datetime(2024, 6, 28))
     print(df)
     # df.to_csv('test.csv')
     # Adjusting factors to the trade (because backtesting.py doesn't accept fractional shares)
@@ -69,7 +69,7 @@ try:
 
     stats = bt.run()
     print(stats)
-    bt.plot(plot_volume=False, superimpose=False, open_browser=True)
+    bt.plot(plot_volume=False, superimpose=False, open_browser=True, resample=False)
 
     # # Optimization
     # stats, heatmap = bt.optimize(

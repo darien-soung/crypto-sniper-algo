@@ -1,3 +1,4 @@
+import pandas as pd
 from backtesting import Strategy, Backtest
 from backtesting.lib import plot_heatmaps
 from datetime import datetime
@@ -70,6 +71,14 @@ try:
     # print(heatmap)
     # print(stats)
     # plot_heatmaps(heatmap, agg="mean")
+
+    # Show all trades
+    trades = stats._trades
+    trades_df = pd.DataFrame(trades)
+    trades_df.to_csv("ema_ribbon_trades")
+
+    trades.ReturnPct *= 100 # Converting 0.01 to 1%
+    print(trades.to_string())
 
 except ValueError as e:
     print(f"Error: {e}")
