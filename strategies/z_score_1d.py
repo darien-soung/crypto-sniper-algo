@@ -31,7 +31,7 @@ class zScoreStrategy(Strategy):
                     # print(f"{self.data.index[-1]}: zscore: {self.zscore[-1]}")
                     if crossover(self.zscore, self.z_score_threshold) > 0:
                         stop_loss = self.data.Close[-1].item() * 0.94
-                        self.buy(size=0.02)
+                        self.buy(size=0.015)
                 else:
                     if crossover(self.zscore, self.z_score_threshold) < 0: # or self.zscore > 3.5:
                         self.position.close()
@@ -40,7 +40,7 @@ class zScoreStrategy(Strategy):
             sys.exit()
 
 try:
-    df = tools.extract_candles_binance(datetime(2020, 6, 22), datetime(2024, 6, 24), "1d", 'BTCUSDT')
+    df = tools.extract_candles_binance(datetime(2020, 1, 22), datetime(2024, 6, 24), "1d", 'BTCUSDT')
     print(df)
     # df.to_csv('test.csv')
     # Adjusting factors to the trade (because backtesting.py doesn't accept fractional shares)
@@ -75,6 +75,13 @@ try:
     #
     # trades.ReturnPct *= 100 # Converting 0.01 to 1%
     # print(trades.to_string())
+
+    # Show all trades
+    trades = stats._trades
+    trades.ReturnPct *= 100  # Converting 0.01 to 1%
+    trades_df = pd.DataFrame(trades)
+    trades_df.to_csv("z_score_trades.csv")
+    print(trades.to_string())
 
 
 except ValueError as e:
