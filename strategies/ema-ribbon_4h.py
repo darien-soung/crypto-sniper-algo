@@ -74,8 +74,8 @@ try:
 
     # Show all trades
     trades = stats._trades
-    trades_df = pd.DataFrame(trades)
-    trades_df.to_csv("ema_ribbon_trades")
+    # trades_df = pd.DataFrame(trades)
+    # trades_df.to_csv("ema_ribbon_trades")
 
     trades.ReturnPct *= 100 # Converting 0.01 to 1%
     print(trades.to_string())

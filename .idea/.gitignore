@@ -1,4 +1,5 @@
 # Default ignored files
 /shelf/
 /workspace.xml
-*.html
+crypto-sniper-algo/playground/**.html
+crypto-sniper-algo/strategies/**.html

@@ -53,7 +53,7 @@ class BollingerEMAStrategy(Strategy): # Basically a mean reversion strategy that
                 long_stop_loss = self.data.Close[-1].item() - atr_sl
                 long_take_profit = self.data.Close[-1].item() + atr_sl * self.risk_reward
 
-                self.buy(size=0.012, sl=long_stop_loss, tp=long_take_profit)
+                self.buy(size=0.015, sl=long_stop_loss, tp=long_take_profit)
 
 
             elif (all(self.ema_fast[-self.ema_backcandles:] < self.ema_slow[-self.ema_backcandles:]) and # Downtrend
@@ -65,25 +65,25 @@ class BollingerEMAStrategy(Strategy): # Basically a mean reversion strategy that
                 short_stop_loss = self.data.Close[-1].item() + atr_sl
                 short_take_profit = self.data.Close[-1].item() - atr_sl * self.risk_reward
 
-                self.sell(size=0.012, sl=short_stop_loss, tp=short_take_profit)
+                self.sell(size=0.015, sl=short_stop_loss, tp=short_take_profit)
         except Exception as e:
             print(f"Error in next method: {e}")
             sys.exit()
 
 
 try:
-    df = tools.extract_candles_csv('BTC_2020-2024_5m.csv', datetime(2023, 1, 1), datetime(2024, 6, 30))
+    df = tools.extract_candles_csv('BTC_2020-2024_5m.csv', datetime(2023, 1, 1), datetime(2023, 1, 30))
     print(df)
     # df.to_csv('test.csv')
     # Adjusting factors to the trade (because backtesting.py doesn't accept fractional shares)
     factor = 100
 
-    bt = Backtest(df, BollingerEMAStrategy, cash=1000000, margin=0.01)
+    bt = Backtest(df, BollingerEMAStrategy, cash=1000000, margin=0.01, commission=0.00055) # 0.055%
 
     ## Backtest Execution
     stats = bt.run()
     print(stats)
-    # bt.plot(plot_volume=False, superimpose=False, open_browser=True, resample=False)
+    bt.plot(plot_volume=False, superimpose=False, open_browser=True, resample=False)
 
     ## Optimization
     # stats, heatmap = bt.optimize(

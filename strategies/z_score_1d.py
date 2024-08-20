@@ -31,7 +31,7 @@ class zScoreStrategy(Strategy):
                     # print(f"{self.data.index[-1]}: zscore: {self.zscore[-1]}")
                     if crossover(self.zscore, self.z_score_threshold) > 0:
                         stop_loss = self.data.Close[-1].item() * 0.94
-                        self.buy(size=0.015)
+                        self.buy(size=0.02)
                 else:
                     if crossover(self.zscore, self.z_score_threshold) < 0: # or self.zscore > 3.5:
                         self.position.close()
