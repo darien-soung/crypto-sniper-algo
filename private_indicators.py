@@ -3,7 +3,7 @@ import pandas as pd
 from typing import List, Union
 import tools
 from datetime import datetime, time
-
+import talib as ta
 
 def crossover(series1: Union[List[float], np.ndarray], series2: Union[List[float], float, int, np.ndarray]) -> int:
     """
@@ -184,6 +184,262 @@ def calculate_bollinger_volatility(upper_band, lower_band, window, sma):
             volatility_level.append(1)  # Medium volatility
 
     return np.array(volatility_level)
+
+
+def stiffness_indicator(close_prices, ma_length_stiffness=100, stiff_length=60, stiff_smooth=3, threshold_stiffness=90):
+    """ UNTESTED
+    Calculate the Stiffness indicator values.
+
+    Parameters:
+    close_prices (array-like): Array of closing prices.
+    ma_length_stiffness (int): Moving average length for stiffness.
+    stiff_length (int): Length for stiffness calculation.
+    stiff_smooth (int): Smoothing length for stiffness.
+    threshold_stiffness (int): Threshold for stiffness.
+
+    Returns:
+    np.ndarray: Array of stiffness values.
+    """
+
+    close_prices = pd.Series(close_prices)
+
+    # Calculate the moving average of close prices
+    ma_close = close_prices.rolling(window=ma_length_stiffness).mean()
+
+    # Calculate the standard deviation of close prices
+    std_close = close_prices.rolling(window=ma_length_stiffness).std()
+
+    # Calculate bound stiffness
+    bound_stiffness = ma_close - 0.2 * std_close
+
+    # Compare close prices to bound stiffness (True/False Series)
+    above_bound = close_prices > bound_stiffness
+    above_bound = pd.Series(above_bound)
+
+    # Convert the boolean Series to an integer Series
+    above_bound_int = above_bound.astype(int)
+
+    # Calculate the sum above bound stiffness using a rolling window
+    sum_above_stiffness = above_bound_int.rolling(window=stiff_length).sum()
+
+    # Calculate the stiffness
+    stiffness = sum_above_stiffness * 100 / stiff_length
+
+    # Smooth the stiffness using EMA
+    stiffness_smoothed = stiffness.ewm(span=stiff_smooth, adjust=False).mean()
+
+    return stiffness_smoothed.values
+
+
+def williams_percent_r(high, low, close, length=14, ema_length=24):
+    """
+    Calculate Williams %R values.
+
+    Parameters:
+    length (int): The lookback period for calculating Williams %R.
+
+    Returns:
+    pd.Series: A pandas series of Williams %R values.
+    """
+    high = pd.Series(high)
+    low = pd.Series(low)
+    close = pd.Series(close)
+
+    highest_high = high.rolling(window=length).max()
+    lowest_low = low.rolling(window=length).min()
+
+    williams_r = 100 * (close - highest_high) / (highest_high - lowest_low)
+
+    ema_wpr = calculate_ema(williams_r, ema_length)
+
+    return williams_r, ema_wpr
+
+
+def calculate_ema(series, length):
+    # Calculate the Exponential Moving Average (EMA)
+    series = pd.Series(series)
+    ema = series.ewm(span=length, adjust=False).mean()
+    return ema
+
+def calculate_wma(series, period):
+    """
+    Calculate the Weighted Moving Average (WMA).
+
+    Parameters:
+    series (pd.Series): The data series (e.g., close prices).
+    period (int): The period over which to calculate the WMA.
+
+    Returns:
+    pd.Series: WMA values.
+    """
+    weights = pd.Series(range(1, period + 1))
+    wma = series.rolling(period).apply(lambda prices: np.dot(prices, weights) / weights.sum(), raw=True)
+    return wma
+
+def calculate_atr(high, low, close, atr_length):
+    """
+    Calculate the Average True Range (ATR).
+
+    Parameters:
+    high (array-like): Array of high prices.
+    low (array-like): Array of low prices.
+    close (array-like): Array of close prices.
+    atr_length (int): The length for calculating the ATR.
+
+    Returns:
+    pd.Series: Array of ATR values.
+    """
+    high = pd.Series(high)
+    low = pd.Series(low)
+    close = pd.Series(close)
+
+    tr1 = high - low
+    tr2 = abs(high - close.shift(1))
+    tr3 = abs(low - close.shift(1))
+    true_range = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+    atr = true_range.ewm(alpha=1/atr_length, adjust=False).mean() # Uses alpha instead of span, don't change
+
+    return atr
+
+
+def pine_atr(high, low, close, length=14):
+    """
+    Calculate the ATR using the Pine Script logic.
+    length (int): Period for calculating ATR (default is 14).
+
+    Returns:
+    pd.Series: ATR values.
+    """
+    high = pd.Series(high)
+    low = pd.Series(low)
+    close = pd.Series(close)
+
+    # Calculate True Range (TR)
+    prev_close = close.shift(1)
+
+    tr1 = high - low
+    tr2 = abs(high - prev_close)
+    tr3 = abs(low - prev_close)
+
+    true_range = np.where(prev_close.isna(), tr1, np.maximum(tr1, np.maximum(tr2, tr3)))
+
+    # Calculate RMA (Rolling Moving Average, equivalent to Pine Script ta.rma)
+    rma = pd.Series(true_range).ewm(span=length, adjust=False).mean()
+
+    return rma
+
+
+def coppock_curve(close, length=10, long_roc_length=14, short_roc_length=11, ma_length=10,
+                  signal_logic='Zero line'): # options=['Zero line', 'Moving Average']
+    """
+    Calculate Coppock Curve and generate entry signals.
+
+    Parameters:
+    length (int): The smoothing length for Coppock Curve.
+    long_roc_length (int): The long ROC length.
+    short_roc_length (int): The short ROC length.
+    ma_length (int): The length of the moving average for Coppock Curve.
+    signal_logic (str): Signal logic, either 'Zero line' or 'Moving Average'.
+
+    Returns:
+    pd.DataFrame: A DataFrame with Coppock Curve, Coppock MA, and signals.
+    """
+    close = pd.Series(close)
+
+    # Calculate ROC (Rate of Change)
+    long_roc = close.pct_change(long_roc_length) * 100
+    short_roc = close.pct_change(short_roc_length) * 100
+
+    # Coppock Curve: WMA of the sum of long and short ROC
+    # coppock = (long_roc + short_roc).rolling(window=length, min_periods=1).mean()
+    coppock = calculate_wma(long_roc + short_roc, length)
+
+    # Coppock MA: EMA of the Coppock Curve
+    coppock_ma = calculate_ema(coppock, ma_length)
+
+    # Signals
+    entry_signal_long = (coppock > 0) if signal_logic == 'Zero line' else (coppock > coppock_ma)
+    entry_signal_short = (coppock < 0) if signal_logic == 'Zero line' else (coppock < coppock_ma)
+
+    # 0 line
+    coppock_zero_line = np.zeros_like(coppock)
+
+    return coppock, coppock_ma, coppock_zero_line
+
+def trend_akkam(open, high, low, close, use_akkam=True, cross_akkam=False, inverse_akkam=False,
+                     akk_range=50, ima_range=6, akk_factor=10.0, mode=0, delta_price=30.0):
+    """
+    AKKAM Trend Indicator
+    Parameters:
+    - open, high, low, close: Arrays of OHLC prices
+    - use_akkam: Boolean, whether to use AKKAM logic
+    - cross_akkam: Boolean, whether to use cross confirmation logic
+    - inverse_akkam: Boolean, whether to invert signals
+    - akk_range: ATR range
+    - ima_range: MA range for EMA
+    - akk_factor: ATR factor for DeltaStop calculation
+    """
+
+    # ATR Calculation
+    atr_value = calculate_atr(high, low, close, akk_range) # atr_value = ta.ATR(high, low, close, timeperiod=akk_range)
+
+    # DeltaStop Calculation
+    delta_stop = calculate_ema(atr_value, ima_range) * akk_factor # delta_stop = ta.EMA(atr_value, timeperiod=ima_range) * akk_factor
+
+    # Initialize TrStop with NaN
+    tr_stop = np.full_like(open, np.nan)
+
+    # Calculate TrStop
+    for i in range(1, len(open)):
+        if np.isnan(tr_stop[i - 1]):
+            tr_stop[i] = open[i] - delta_stop[i]
+        else:
+            if open[i] == tr_stop[i - 1]:
+                tr_stop[i] = tr_stop[i - 1]
+            elif open[i - 1] < tr_stop[i - 1] and open[i] < tr_stop[i - 1]:
+                tr_stop[i] = min(tr_stop[i - 1], open[i] + delta_stop[i])
+            elif open[i - 1] > tr_stop[i - 1] and open[i] > tr_stop[i - 1]:
+                tr_stop[i] = max(tr_stop[i - 1], open[i] - delta_stop[i])
+            else:
+                tr_stop[i] = open[i] - delta_stop[i] if open[i] > tr_stop[i - 1] else open[i] + delta_stop[i]
+
+    # # Generate Signals
+    # basic_long_condition = close > tr_stop
+    # basic_short_condition = close < tr_stop
+    #
+    # long_signals = basic_long_condition
+    # short_signals = basic_short_condition
+    #
+    # if cross_akkam:
+    #     long_signals = np.logical_and(np.roll(long_signals, 1) == False, long_signals)
+    #     short_signals = np.logical_and(np.roll(short_signals, 1) == False, short_signals)
+    #
+    # if inverse_akkam:
+    #     long_signals, short_signals = short_signals, long_signals
+    #
+    # long_signals_final = long_signals if use_akkam else np.ones_like(long_signals) # can return these 2 if you want
+    # short_signals_final = short_signals if use_akkam else np.ones_like(short_signals)
+
+    return tr_stop
+
+
+def atr_bands(high, low, close, atr_period=14, atr_multiplier_upper=2.0, atr_multiplier_lower=2.0):
+    """
+    Calculate the ATR bands.
+
+    Parameters:
+    atr_period (int): ATR period.
+    atr_multiplier_upper (float): Multiplier for upper band.
+    atr_multiplier_lower (float): Multiplier for lower band.
+    """
+
+    atr = pine_atr(high, low, close, atr_period)
+
+    # Calculate the ATR bands
+    lower_band = close - atr * atr_multiplier_lower
+    upper_band = close + atr * atr_multiplier_upper
+
+    return upper_band, lower_band
 
 def session_volume_profile(date, highs, lows, volumes, lookback):
     """

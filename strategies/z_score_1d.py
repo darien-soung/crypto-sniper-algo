@@ -31,7 +31,7 @@ class zScoreStrategy(Strategy):
                     # print(f"{self.data.index[-1]}: zscore: {self.zscore[-1]}")
                     if crossover(self.zscore, self.z_score_threshold) > 0:
                         stop_loss = self.data.Close[-1].item() * 0.94
-                        self.buy(size=0.015)
+                        self.buy(size=0.02)
                 else:
                     if crossover(self.zscore, self.z_score_threshold) < 0: # or self.zscore > 3.5:
                         self.position.close()
@@ -52,35 +52,35 @@ try:
 
     bt = Backtest(df, zScoreStrategy, cash=1000000, margin=0.01)
 
-    stats = bt.run()
-    print(stats)
-    bt.plot(plot_volume=False, superimpose=False, open_browser=True)
+    # stats = bt.run()
+    # print(stats)
+    # bt.plot(plot_volume=False, superimpose=False, open_browser=True)
 
     # Optimization
-    # stats, heatmap = bt.optimize(
-    #     window=range(20, 100, 1),
-    #     z_score_threshold= [0.3 + 0.05 * i for i in range(15)], # [0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5],
-    #     maximize='Return [%]', # Max. Drawdown [%], Return [%], Sharpe Ratio
-    #     return_heatmap=True,
-    # )
-    # print(heatmap)
-    # plot_heatmaps(heatmap, agg="mean")
+    stats, heatmap = bt.optimize(
+        window=range(20, 100, 1),
+        z_score_threshold= [0.3 + 0.05 * i for i in range(15)], # [0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5],
+        maximize='Max. Drawdown [%]', # Max. Drawdown [%], Return [%], Sharpe Ratio
+        return_heatmap=True,
+    )
+    print(heatmap)
+    plot_heatmaps(heatmap, agg="mean")
 
-    # # Show all the trades
-    # trades = stats._trades
-    #
-    # # Scale for cash adjustment
-    # trades.Size /= factor
-    # trades.PnL /= factor
-    #
-    # trades.ReturnPct *= 100 # Converting 0.01 to 1%
-    # print(trades.to_string())
+    # Show all the trades
+    trades = stats._trades
+
+    # Scale for cash adjustment
+    trades.Size /= factor
+    trades.PnL /= factor
+
+    trades.ReturnPct *= 100 # Converting 0.01 to 1%
+    print(trades.to_string())
 
     # Show all trades
     trades = stats._trades
     trades.ReturnPct *= 100  # Converting 0.01 to 1%
-    trades_df = pd.DataFrame(trades)
-    trades_df.to_csv("z_score_trades.csv")
+    # trades_df = pd.DataFrame(trades)
+    # trades_df.to_csv("z_score_trades.csv")
     print(trades.to_string())
 
 
